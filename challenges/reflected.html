@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reflected — XSS CTF</title>
+  <!-- use the same stylesheet as index -->
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    /* small page-specific overrides */
+    main { max-width:900px; margin:2rem auto; padding:1rem; }
+    .vuln-box { background: rgba(255,255,255,0.02); padding:1rem; border-radius:10px; border:1px solid rgba(255,255,255,0.03); }
+    .input-row { display:flex; gap:8px; margin:0.75rem 0; align-items:center; }
+    input.msg { flex:1; padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:inherit; }
+    button.go { padding:8px 12px; border-radius:8px; border:none; background: linear-gradient(90deg,#e11d48,#ff6b8a); color:#fff; font-weight:600; }
+    .hint { color: #9aa6b2; font-size:0.9rem; margin-top:0.6rem; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand"><strong>XSS</strong> CTF <span class="tag">reflected</span></div>
+	<nav class="top-nav"><a href="/index.html">Home</a></nav>
+      </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Reflected XSS</h1>
+	<p class="lead">This Reflected XSS vulnerability occurs when user‑supplied input is immediately included in a page without proper escaping, allowing an attacker to inject and run JavaScript in a victim’s browser.
+<br>
+<br>
+Impact: an attacker can steal session cookies, capture keystrokes, display phishing UI, and enable account takeover or data exfiltration.</p>
+      <p class="lead">The msg query is reflected into the page without sanitization - use the field below to craft payloads.</p>
+
+      <div class="vuln-box">
+        <div class="input-row">
+          <input id="payload" class="msg" placeholder='Hello, I am Iron Man' />
+          <button id="apply" class="go">Apply</button>
+        </div>
+
+        <div id="msg">Message: <em>nothing yet</em></div>
+        <div class="hint">Tip: Trigger an alert containing the text "REFLECTED" to reveal the flag.</div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>CTF lab - intentional vulnerabilities only</small>
+    </div>
+  </footer>
+
+  <script>
+    // Page token (unique per page)
+    window.ctf_token = "reflected-token-REX1";
+
+    const input = document.getElementById('payload');
+    const applyBtn = document.getElementById('apply');
+    const container = document.getElementById('msg');
+
+    // Keep track if we've already claimed the flag to avoid duplicates
+    let claimed = false;
+
+    // Helper: replace ?msg= in URL without reloading
+    function updateUrlMsg(value) {
+      const newSearch = value ? '?msg=' + encodeURIComponent(value) : '';
+      const newUrl = location.pathname + newSearch + location.hash;
+      history.replaceState(null, '', newUrl);
+    }
+
+    // Vulnerable injection function (intentionally unsafe)
+    function injectMessage(value) {
+      // Note: vulnerable on purpose — we set innerHTML directly
+      container.innerHTML = 'Message: ' + value;
+      // After injection, check for injected script nodes / attributes
+      checkAndClaim();
+    }
+
+    // Claim function — posts token to /api/claim
+    async function claimFlag(challengeName) {
+      if (claimed) return;
+      claimed = true;
+      try {
+        const resp = await fetch('/api/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: window.ctf_token, challenge: challengeName })
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(()=>({ error: 'unknown' }));
+          alert('Claim failed: ' + (err.error || resp.status));
+          return;
+        }
+        const json = await resp.json();
+        alert('FLAG: ' + json.flag);
+      } catch (e) {
+        alert('Error contacting /api/claim: ' + e.message);
+      }
+    }
+
+    // Detect injected <script> nodes and trigger claim (wait briefly to let injected code run)
+    function checkAndClaim() {
+      if (claimed) return;
+      // If a script element exists inside the container, assume injection happened
+      const injectedScript = container.querySelector('script');
+      if (injectedScript) {
+        // small delay so injected script (e.g., alert) runs first
+        setTimeout(()=> claimFlag('REFLECTED'), 200);
+        return;
+      }
+      // also detect other possible JS injection vectors: onerror/onload attributes inside elements
+      const withHandler = container.querySelector('[onerror], [onload], [onclick], [onmouseover]');
+      if (withHandler) {
+        setTimeout(()=> claimFlag('REFLECTED'), 200);
+      }
+    }
+
+    // Read initial ?msg= and populate input & injection
+    (function initFromUrl() {
+      const params = new URLSearchParams(location.search);
+      const msg = params.get('msg') || '';
+      if (msg) {
+        const decoded = msg;
+        input.value = decoded;
+        injectMessage(decoded);
+      } else {
+        // show placeholder state
+        container.innerHTML = 'Message: <em>nothing yet</em>';
+      }
+    })();
+
+    // When user types, update URL and inject live. Debounce slightly for better UX.
+    let debounceTimer = null;
+    input.addEventListener('input', (e) => {
+      const val = e.target.value;
+      // update URL (no reload)
+      updateUrlMsg(val);
+      // debounce injection slightly
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(()=> injectMessage(val), 120);
+    });
+
+    // Apply button does the same (handy if pasting payloads)
+    applyBtn.addEventListener('click', ()=> {
+      const val = input.value;
+      updateUrlMsg(val);
+      injectMessage(val);
+      input.focus();
+    });
+
+    // Also submit on Enter
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
