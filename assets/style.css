@@ -147,3 +147,30 @@ body{
   .header-inner{flex-direction:column;align-items:flex-start;gap:8px}
   .footer-links{float:none;margin-top:8px;display:flex;gap:10px}
 }
+
+/* Club logo in top-right corner */
+.club-logo {
+  position: absolute;
+  top: 0.6rem; /* aligns with header padding */
+  right: 1.5rem; /* small space from right edge */
+}
+
+.club-logo img {
+  height: 40px;  /* adjust size as needed */
+  width: auto;
+  border-radius: 6px; /* optional, for slightly rounded corners */
+}
+
+/* Make sure header-inner is positioned relative to allow absolute positioning */
+.header-inner {
+  position: relative;
+}
+
+/* Mobile adjustment: keep logo visible top-right */
+@media (max-width: 720px){
+  .club-logo {
+    top: 0.6rem;
+    right: 1rem;
+  }
+}
+
