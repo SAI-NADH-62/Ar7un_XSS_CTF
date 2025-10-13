@@ -1,19 +1,37 @@
-<header class="site-header">
-  <div class="container header-inner">
-    <div class="brand">
-      <strong>CyberHawks XSS</strong> CTF
-      <span class="tag">practice • learning • safe</span>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CyberHawks XSS CTF — Practice Lab</title>
+  <!-- Link to your stylesheet; adjust path if needed -->
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand" aria-label="Site brand">
+        <strong>CyberHawks XSS</strong> CTF
+        <span class="tag">practice • learning • safe</span>
+      </div>
+
+      <nav class="top-nav" aria-label="Primary navigation">
+        <a href="#challenges">Challenges</a>
+        <a href="#rules">Rules</a>
+      </nav>
     </div>
+  </header>
 
-    <nav class="top-nav">
-      <a href="#challenges">Challenges</a>
-      <a href="#rules">Rules</a>
-    </nav>
-
-  <main class="container">
+  <main id="main-content" class="container" role="main">
     <section class="hero">
       <h1>XSS CTF - Client-side vulnerability lab</h1>
-      <p class="lead">Train on reflected, DOM, stored and SVG/attribute XSS challenges. Each challenge is intentionally vulnerable and displays a flag on successful exploitation.</p>
+      <p class="lead">
+        Train on reflected, DOM, stored and SVG/attribute XSS challenges. Each
+        challenge is intentionally vulnerable and displays a flag on successful
+        exploitation.
+      </p>
       <div class="meta">
         <span class="pill">5 challenges</span>
         <span class="pill">Static + serverless API</span>
@@ -21,10 +39,12 @@
       </div>
     </section>
 
-    <section id="challenges" class="cards">
+    <section id="challenges" class="cards" aria-labelledby="challenges-heading">
+      <h2 id="challenges-heading" class="visually-hidden">Challenges</h2>
+
       <article class="card">
         <h3>Reflected <small>easy</small></h3>
-        <p>Simple query parameter injection (reflected XSS). Try injecting a simple payloads.</p>
+        <p>Simple query parameter injection (reflected XSS). Try injecting a simple payload.</p>
         <a class="btn" href="challenges/reflected.html">Open</a>
       </article>
 
@@ -45,33 +65,35 @@
         <p>Attribute name - input placed directly into an HTML attribute without escaping (simulates attribute/event XSS).</p>
         <a class="btn" href="challenges/attr.html">Open</a>
       </article>
-    </section>
-	
-	<article class="card">
+
+      <article class="card">
         <h3>SVG <small>medium</small></h3>
         <p>SVG upload - paste SVG markup or upload a file (unsafe SVG will be injected).</p>
         <a class="btn" href="challenges/svg.html">Open</a>
       </article>
     </section>
 
-    <section id="rules" class="rules">
-      <h2>Rules</h2>
+    <section id="rules" class="rules" aria-labelledby="rules-heading">
+      <h2 id="rules-heading">Rules</h2>
       <ol>
-	<li>Follow us on:<a href="https://linktr.ee/CyberHawksClub_GNITHYD" target="_blank" rel="noopener">CyberHawksClub</a> </li>
+        <li>
+          Follow us on:
+          <a href="https://linktr.ee/CyberHawksClub_GNITHYD" target="_blank" rel="noopener noreferrer">CyberHawksClub</a>
+        </li>
         <li>Only test XSS on internally hosted or intentionally vulnerable applications you control.</li>
-	<li>You are fully responsible for any testing performed outside the allowed scope.</li>
+        <li>You are fully responsible for any testing performed outside the allowed scope.</li>
         <li>This lab is for learning and defensive research only.</li>
         <li>Do not expose or publish real credentials / data.</li>
       </ol>
     </section>
   </main>
 
-  <footer class="site-footer">
+  <footer class="site-footer" role="contentinfo">
     <div class="container">
       <small>Made for learning • Do not reuse in production</small>
       <div class="footer-links">
-	<a href="https://linktr.ee/CyberHawksClub_GNITHYD" target="_blank" rel="noopener">CyberHawksClub</a>
-        <a href="https://www.linkedin.com/in/k-sai-nadh/" target="_blank" rel="noopener">MyLinkedin</a>
+        <a href="https://linktr.ee/CyberHawksClub_GNITHYD" target="_blank" rel="noopener noreferrer">CyberHawksClub</a>
+        <a href="https://www.linkedin.com/in/k-sai-nadh/" target="_blank" rel="noopener noreferrer">MyLinkedin</a>
       </div>
     </div>
   </footer>
