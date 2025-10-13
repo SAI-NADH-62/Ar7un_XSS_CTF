@@ -236,3 +236,26 @@ body {
     gap: 10px;
   }
 }
+
+/* --- Logo styling beside Rules link --- */
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--glass);
+  padding: 2px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nav-logo:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 6px var(--accent);
+}
