@@ -25,48 +25,52 @@
 
   <main>
     <div class="container">
-      <h1>Stored XSS</h1>
+      <h1>Stored XSS (Filtered)</h1>
       <p class="lead">Definition: Stored XSS occurs when input is persisted (database, storage, localStorage) and later rendered unsafely to other users or sessions.</p>
-      <p class="lead">Impact: persisted payloads run whenever a user views the content - enabling mass session theft, persistent phishing, unauthorized actions (account takeover, admin backdoors), and long‑term data exfiltration.</p>
+      <p class="lead">Impact: persisted payloads can affect many victims. This demo stores notes to <code>localStorage</code>.</p>
 
       <div class="vuln-box">
         <form id="form" class="input-row" onsubmit="return false;">
-          <input id="note" class="msg" placeholder='Post a comment' />
+          <input id="note" class="msg" placeholder='Leave a note (HTML allowed, but &lt;script&gt; blocked)' />
           <button id="save" class="go">Save</button>
         </form>
 
-        <div class="notes" id="notesContainer">
-          <!-- notes will render here -->
+        <div class="notes" id="notesContainer"></div>
+        <div class="hint">
+          Tip: Direct <code>&lt;script&gt;</code> tags are blocked — but creative mixed-case or broken tag payloads may bypass it.
         </div>
-        <div class="hint">Tip: Trigger an alert containing the text "STORED" to reveal the flag.</div>
       </div>
     </div>
   </main>
 
   <footer class="site-footer">
-    <div class="container"><small>CTF lab - intentional vulnerabilities only</small></div>
+    <div class="container"><small>CTF lab — intentional vulnerabilities only</small></div>
   </footer>
 
   <script>
     window.ctf_token = "stored-token-SPR1NT3R";
-    const form = document.getElementById('form');
     const noteInput = document.getElementById('note');
     const saveBtn = document.getElementById('save');
     const notesContainer = document.getElementById('notesContainer');
     let claimed = false;
 
-    function render(){
+    // weak validation: block only direct "<script"
+    function isBlocked(input) {
+      const lower = input.toLowerCase();
+      // blocks <script only if it appears exactly as "<script" at start or middle
+      return lower.includes("<script");
+    }
+
+    function render() {
       const list = JSON.parse(localStorage.getItem('notes') || '[]');
-      // intentionally vulnerable: render notes as raw HTML
       notesContainer.innerHTML = list.map(n => `<div class="note">${n}</div>`).join('');
-      // detect script nodes
       const s = notesContainer.querySelector('script');
       if (s && !claimed) {
         setTimeout(()=> claimFlag('STORED'), 200);
       }
     }
 
-    async function claimFlag(name){
+    async function claimFlag(name) {
       if (claimed) return;
       claimed = true;
       try {
@@ -74,19 +78,22 @@
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ token: window.ctf_token, challenge: name })
         });
-        if (!r.ok) {
-          const err = await r.json().catch(()=>({error:'unknown'}));
-          alert('Claim failed: ' + (err.error || r.status));
-          return;
-        }
         const j = await r.json();
         alert('FLAG: ' + j.flag);
       } catch(e){ alert('Error contacting /api/claim: ' + e.message); }
     }
 
-    // event handlers
-    saveBtn.addEventListener('click', ()=>{
-      const v = noteInput.value;
+    saveBtn.addEventListener('click', () => {
+      const v = noteInput.value.trim();
+      if (!v) return;
+
+      // Apply weak validation
+      if (isBlocked(v)) {
+        alert("Blocked: <script> tags are not allowed!");
+        noteInput.value = '';
+        return;
+      }
+
       const list = JSON.parse(localStorage.getItem('notes') || '[]');
       list.push(v);
       localStorage.setItem('notes', JSON.stringify(list));
@@ -94,7 +101,6 @@
       render();
     });
 
-    // init
     render();
   </script>
 </body>
