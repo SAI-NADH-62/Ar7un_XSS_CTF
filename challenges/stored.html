@@ -26,7 +26,7 @@
   <main>
     <div class="container">
       <h1>Stored XSS (Filtered)</h1>
-      <p class="lead">Definition: Stored XSS occurs when input is persisted (database, storage, localStorage) and later rendered unsafely to other users or sessions.</p>
+      <p class="lead">Definition: Stored XSS occurs when user input is saved (in DB or localStorage) and later rendered unsafely for others.</p>
       <p class="lead">Impact: persisted payloads can affect many victims. This demo stores notes to <code>localStorage</code>.</p>
 
       <div class="vuln-box">
@@ -37,7 +37,7 @@
 
         <div class="notes" id="notesContainer"></div>
         <div class="hint">
-          Tip: Direct <code>&lt;script&gt;</code> tags are blocked — but creative mixed-case or broken tag payloads may bypass it.
+          Tip: Direct <code>&lt;script&gt;</code> tags are blocked — but payloads that don’t start directly with them may slip through.
         </div>
       </div>
     </div>
@@ -54,11 +54,11 @@
     const notesContainer = document.getElementById('notesContainer');
     let claimed = false;
 
-    // weak validation: block only direct "<script"
+    // 🧩 Weak validation: blocks only if <script (any case) appears at the start of input or after whitespace
     function isBlocked(input) {
-      const lower = input.toLowerCase();
-      // blocks <script only if it appears exactly as "<script" at start or middle
-      return lower.includes("<script");
+      const lower = input.toLowerCase().trimStart();
+      // only block if it starts with <script (not if it's inside like "><ScRipT>")
+      return lower.startsWith("<script");
     }
 
     function render() {
@@ -84,10 +84,9 @@
     }
 
     saveBtn.addEventListener('click', () => {
-      const v = noteInput.value.trim();
-      if (!v) return;
+      const v = noteInput.value;
+      if (!v.trim()) return;
 
-      // Apply weak validation
       if (isBlocked(v)) {
         alert("Blocked: <script> tags are not allowed!");
         noteInput.value = '';
