@@ -3,18 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Reflected — XSS CTF (fixed)</title>
-  <!-- use the same stylesheet as index -->
+  <title>Reflected — XSS CTF (Safe Version)</title>
   <link rel="stylesheet" href="/assets/style.css">
   <style>
-    /* small page-specific overrides */
     main { max-width:900px; margin:2rem auto; padding:1rem; }
     .vuln-box { background: rgba(255,255,255,0.02); padding:1rem; border-radius:10px; border:1px solid rgba(255,255,255,0.03); }
     .input-row { display:flex; gap:8px; margin:0.75rem 0; align-items:center; }
     input.msg { flex:1; padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:inherit; }
     button.go { padding:8px 12px; border-radius:8px; border:none; background: linear-gradient(90deg,#e11d48,#ff6b8a); color:#fff; font-weight:600; }
     .hint { color: #9aa6b2; font-size:0.9rem; margin-top:0.6rem; }
-    .user-msg { white-space:pre-wrap; } /* preserve line breaks typed by user */
   </style>
 </head>
 <body>
@@ -27,11 +24,11 @@
 
   <main>
     <div class="container">
-      <h1>Reflected XSS</h1>
-      <p class="lead">This Reflected XSS vulnerability occurs when user-supplied input is immediately included in a page without proper escaping, allowing an attacker to inject and run JavaScript in a victim’s browser.
-      <br><br>
-      Impact: an attacker can steal session cookies, capture keystrokes, display phishing UI, and enable account takeover or data exfiltration.</p>
-      <p class="lead">The msg query is reflected into the page without sanitization - use the field below to craft payloads.</p>
+      <h1>Reflected XSS (Safe Version)</h1>
+      <p class="lead">
+        This version of the Reflected XSS lab demonstrates how to properly escape user input
+        to prevent script execution. Try typing HTML or JavaScript — it will render safely as text.
+      </p>
 
       <div class="vuln-box">
         <div class="input-row">
@@ -39,125 +36,83 @@
           <button id="apply" class="go">Apply</button>
         </div>
 
-        <div id="msg" aria-live="polite"></div>
-        <div class="hint">Tip: Trigger an alert containing the text "REFLECTED" to reveal the flag.</div>
+        <div id="msg">Message: <em>nothing yet</em></div>
+        <div class="hint">Input will be reflected safely without executing scripts.</div>
       </div>
     </div>
   </main>
 
   <footer class="site-footer">
     <div class="container">
-      <small>CTF lab - intentional vulnerabilities only</small>
+      <small>CTF lab - intentional vulnerabilities only (safe version)</small>
     </div>
   </footer>
 
-<script>
-  // Page token (unique per page)
-  window.ctf_token = "reflected-token-REX1";
+  <script>
+    const input = document.getElementById('payload');
+    const applyBtn = document.getElementById('apply');
+    const container = document.getElementById('msg');
 
-  const input = document.getElementById('payload');
-  const applyBtn = document.getElementById('apply');
-  const container = document.getElementById('msg');
-
-  let claimed = false;
-
-  function updateUrlMsg(value) {
-    const newSearch = value ? '?msg=' + encodeURIComponent(value) : '';
-    const newUrl = location.pathname + newSearch + location.hash;
-    history.replaceState(null, '', newUrl);
-  }
-
-  function renderPlaceholder() {
-    container.textContent = '';
-    container.appendChild(document.createTextNode('Message: '));
-    const em = document.createElement('em');
-    em.textContent = 'nothing yet';
-    container.appendChild(em);
-  }
-
-  function injectMessage(value) {
-    container.textContent = '';
-    container.appendChild(document.createTextNode('Message: '));
-    if (!value) {
-      const em = document.createElement('em');
-      em.textContent = 'nothing yet';
-      container.appendChild(em);
-      return;
+    // Safely update URL parameter
+    function updateUrlMsg(value) {
+      const newSearch = value ? '?msg=' + encodeURIComponent(value) : '';
+      const newUrl = location.pathname + newSearch + location.hash;
+      history.replaceState(null, '', newUrl);
     }
-    const span = document.createElement('span');
-    span.className = 'user-msg';
-    span.textContent = value; // SAFE: escapes HTML
-    container.appendChild(span);
-    // Defensive check
-    checkAndClaim();
-  }
 
-  async function claimFlag(challengeName) {
-    if (claimed) return;
-    claimed = true;
-    try {
-      const resp = await fetch('/api/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: window.ctf_token, challenge: challengeName })
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(()=>({ error: 'unknown' }));
-        alert('Claim failed: ' + (err.error || resp.status));
-        return;
+    // Secure message renderer (no innerHTML)
+    function injectMessage(value) {
+      container.textContent = '';
+      const label = document.createElement('span');
+      label.textContent = 'Message: ';
+      container.appendChild(label);
+
+      if (!value) {
+        const em = document.createElement('em');
+        em.textContent = 'nothing yet';
+        container.appendChild(em);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'user-msg';
+        span.textContent = value; // textContent ensures safe rendering
+        container.appendChild(span);
       }
-      const json = await resp.json();
-      alert('FLAG: ' + json.flag);
-    } catch (e) {
-      alert('Error contacting /api/claim: ' + e.message);
     }
-  }
 
-  function checkAndClaim() {
-    if (claimed) return;
-    const injectedScript = container.querySelector('script');
-    if (injectedScript) {
-      setTimeout(()=> claimFlag('REFLECTED'), 200);
-      return;
-    }
-    const withHandler = container.querySelector('[onerror], [onload], [onclick], [onmouseover], [onfocus]');
-    if (withHandler) {
-      setTimeout(()=> claimFlag('REFLECTED'), 200);
-    }
-  }
+    // Initialize from URL (?msg=)
+    (function initFromUrl() {
+      const params = new URLSearchParams(location.search);
+      const msg = params.get('msg') || '';
+      if (msg) {
+        input.value = msg;
+        injectMessage(msg);
+      } else {
+        injectMessage('');
+      }
+    })();
 
-  (function initFromUrl() {
-    const params = new URLSearchParams(location.search);
-    const msg = params.get('msg') || '';
-    if (msg) {
-      input.value = msg;
-      injectMessage(msg);
-    } else {
-      renderPlaceholder();
-    }
-  })();
+    // Live update (debounced)
+    let debounceTimer = null;
+    input.addEventListener('input', (e) => {
+      const val = e.target.value;
+      updateUrlMsg(val);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(()=> injectMessage(val), 120);
+    });
 
-  let debounceTimer = null;
-  input.addEventListener('input', (e) => {
-    const val = e.target.value;
-    updateUrlMsg(val);
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(()=> injectMessage(val), 120);
-  });
+    applyBtn.addEventListener('click', ()=> {
+      const val = input.value;
+      updateUrlMsg(val);
+      injectMessage(val);
+      input.focus();
+    });
 
-  applyBtn.addEventListener('click', ()=> {
-    const val = input.value;
-    updateUrlMsg(val);
-    injectMessage(val);
-    input.focus();
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      applyBtn.click();
-    }
-  });
-</script>
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyBtn.click();
+      }
+    });
+  </script>
 </body>
 </html>
