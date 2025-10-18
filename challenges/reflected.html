@@ -51,7 +51,7 @@
     </div>
   </footer>
 
-  <script>
+<script>
   // Page token (unique per page)
   window.ctf_token = "reflected-token-REX1";
 
@@ -88,6 +88,7 @@
     span.className = 'user-msg';
     span.textContent = value; // SAFE: escapes HTML
     container.appendChild(span);
+    // Defensive check
     checkAndClaim();
   }
 
