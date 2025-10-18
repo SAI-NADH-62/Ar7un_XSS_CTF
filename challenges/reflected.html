@@ -52,135 +52,128 @@
   </footer>
 
   <script>
-    // Page token (unique per page)
-    window.ctf_token = "reflected-token-REX1";
+  // Page token (unique per page)
+  window.ctf_token = "reflected-token-REX1";
 
-    const input = document.getElementById('payload');
-    const applyBtn = document.getElementById('apply');
-    const container = document.getElementById('msg');
+  const input = document.getElementById('payload');
+  const applyBtn = document.getElementById('apply');
+  const container = document.getElementById('msg');
 
-    // Keep track if we've already claimed the flag to avoid duplicates
-    let claimed = false;
+  // Keep track if we've already claimed the flag to avoid duplicates
+  let claimed = false;
 
-    // Helper: replace ?msg= in URL without reloading
-    function updateUrlMsg(value) {
-      const newSearch = value ? '?msg=' + encodeURIComponent(value) : '';
-      const newUrl = location.pathname + newSearch + location.hash;
-      history.replaceState(null, '', newUrl);
-    }
+  // Helper: replace ?msg= in URL without reloading
+  function updateUrlMsg(value) {
+    const newSearch = value ? '?msg=' + encodeURIComponent(value) : '';
+    const newUrl = location.pathname + newSearch + location.hash;
+    history.replaceState(null, '', newUrl);
+  }
 
-    // Safe renderer: never insert user data as HTML
-    function renderPlaceholder() {
-      // Clear and show: Message: <em>nothing yet</em>
-      container.textContent = ''; // clears child nodes
-      const text = document.createTextNode('Message: ');
-      container.appendChild(text);
+  // Safe renderer: never insert user data as HTML
+  function renderPlaceholder() {
+    container.textContent = ''; // clears child nodes
+    container.appendChild(document.createTextNode('Message: '));
+    const em = document.createElement('em');
+    em.textContent = 'nothing yet';
+    container.appendChild(em);
+  }
+
+  function injectMessage(value) {
+    // Clear previous contents
+    container.textContent = '';
+
+    // Static label (text node)
+    container.appendChild(document.createTextNode('Message: '));
+
+    if (!value) {
       const em = document.createElement('em');
       em.textContent = 'nothing yet';
       container.appendChild(em);
+      return;
     }
 
-    function injectMessage(value) {
-      // Clear previous contents
-      container.textContent = '';
+    // Use a span and assign textContent to escape HTML characters.
+    const span = document.createElement('span');
+    span.className = 'user-msg';
+    span.textContent = value; // ESCAPES any HTML like <script>
+    container.appendChild(span);
 
-      // Static label (text node)
-      container.appendChild(document.createTextNode('Message: '));
+    // Defensive check: if somehow non-text nodes exist, detect them (shouldn't happen)
+    checkAndClaim();
+  }
 
-      if (!value) {
-        const em = document.createElement('em');
-        em.textContent = 'nothing yet';
-        container.appendChild(em);
+  // Claim function — posts token to /api/claim
+  async function claimFlag(challengeName) {
+    if (claimed) return;
+    claimed = true;
+    try {
+      const resp = await fetch('/api/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: window.ctf_token, challenge: challengeName })
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(()=>({ error: 'unknown' }));
+        alert('Claim failed: ' + (err.error || resp.status));
         return;
       }
-
-      // Use a span and assign textContent to escape HTML characters.
-      const span = document.createElement('span');
-      span.className = 'user-msg';
-      // textContent ensures that '<script>' stays text and event attributes do not execute.
-      span.textContent = value;
-      container.appendChild(span);
-
-      // Defensive check: if somehow non-text nodes exist, detect them (shouldn't happen)
-      checkAndClaim();
+      const json = await resp.json();
+      alert('FLAG: ' + json.flag);
+    } catch (e) {
+      alert('Error contacting /api/claim: ' + e.message);
     }
+  }
 
-    // Claim function — posts token to /api/claim
-    async function claimFlag(challengeName) {
-      if (claimed) return;
-      claimed = true;
-      try {
-        const resp = await fetch('/api/claim', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: window.ctf_token, challenge: challengeName })
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(()=>({ error: 'unknown' }));
-          alert('Claim failed: ' + (err.error || resp.status));
-          return;
-        }
-        const json = await resp.json();
-        alert('FLAG: ' + json.flag);
-      } catch (e) {
-        alert('Error contacting /api/claim: ' + e.message);
-      }
+  // Detect injected <script> nodes and trigger claim (defense-in-depth)
+  function checkAndClaim() {
+    if (claimed) return;
+    const injectedScript = container.querySelector('script');
+    if (injectedScript) {
+      setTimeout(()=> claimFlag('REFLECTED'), 200);
+      return;
     }
-
-    // Detect injected <script> nodes and trigger claim (defense-in-depth)
-    // With the safe renderer above, user input cannot create script nodes or inline handlers.
-    function checkAndClaim() {
-      if (claimed) return;
-      // If a script element exists inside the container, assume injection happened
-      const injectedScript = container.querySelector('script');
-      if (injectedScript) {
-        setTimeout(()=> claimFlag('REFLECTED'), 200);
-        return;
-      }
-      // also detect other possible JS injection vectors: onerror/onload attributes inside elements
-      const withHandler = container.querySelector('[onerror], [onload], [onclick], [onmouseover], [onfocus]');
-      if (withHandler) {
-        setTimeout(()=> claimFlag('REFLECTED'), 200);
-      }
+    const withHandler = container.querySelector('[onerror], [onload], [onclick], [onmouseover], [onfocus]');
+    if (withHandler) {
+      setTimeout(()=> claimFlag('REFLECTED'), 200);
     }
+  }
 
-    // Read initial ?msg= and populate input & injection
-    (function initFromUrl() {
-      const params = new URLSearchParams(location.search);
-      const msg = params.get('msg') || '';
-      if (msg) {
-        // URLSearchParams.get returns decoded value
-        input.value = msg;
-        injectMessage(msg);
-      } else {
-        renderPlaceholder();
-      }
-    })();
+  // Read initial ?msg= and populate input & injection
+  (function initFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const msg = params.get('msg') || '';
+    if (msg) {
+      input.value = msg;
+      injectMessage(msg);
+    } else {
+      renderPlaceholder();
+    }
+  })();
 
-    // When user types, update URL and inject live. Debounce slightly for better UX.
-    let debounceTimer = null;
-    input.addEventListener('input', (e) => {
-      const val = e.target.value;
-      updateUrlMsg(val);
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(()=> injectMessage(val), 120);
-    });
+  // When user types, update URL and inject live. Debounce slightly for better UX.
+  let debounceTimer = null;
+  input.addEventListener('input', (e) => {
+    const val = e.target.value;
+    updateUrlMsg(val);
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(()=> injectMessage(val), 120);
+  });
 
-    // Apply button does the same (handy if pasting payloads)
-    applyBtn.addEventListener('click', ()=> {
-      const val = input.value;
-      updateUrlMsg(val);
-      injectMessage(val);
-      input.focus();
-    });
+  // Apply button does the same (handy if pasting payloads)
+  applyBtn.addEventListener('click', ()=> {
+    const val = input.value;
+    updateUrlMsg(val);
+    injectMessage(val);
+    input.focus();
+  });
 
-    // Also submit on Enter
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        applyBtn.click();
-      }
-    });
-  </script>
+  // Also submit on Enter
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyBtn.click();
+    }
+  });
+</script>
 </body>
 </html>
