@@ -59,19 +59,16 @@
   const applyBtn = document.getElementById('apply');
   const container = document.getElementById('msg');
 
-  // Keep track if we've already claimed the flag to avoid duplicates
   let claimed = false;
 
-  // Helper: replace ?msg= in URL without reloading
   function updateUrlMsg(value) {
     const newSearch = value ? '?msg=' + encodeURIComponent(value) : '';
     const newUrl = location.pathname + newSearch + location.hash;
     history.replaceState(null, '', newUrl);
   }
 
-  // Safe renderer: never insert user data as HTML
   function renderPlaceholder() {
-    container.textContent = ''; // clears child nodes
+    container.textContent = '';
     container.appendChild(document.createTextNode('Message: '));
     const em = document.createElement('em');
     em.textContent = 'nothing yet';
@@ -79,30 +76,21 @@
   }
 
   function injectMessage(value) {
-    // Clear previous contents
     container.textContent = '';
-
-    // Static label (text node)
     container.appendChild(document.createTextNode('Message: '));
-
     if (!value) {
       const em = document.createElement('em');
       em.textContent = 'nothing yet';
       container.appendChild(em);
       return;
     }
-
-    // Use a span and assign textContent to escape HTML characters.
     const span = document.createElement('span');
     span.className = 'user-msg';
-    span.textContent = value; // ESCAPES any HTML like <script>
+    span.textContent = value; // SAFE: escapes HTML
     container.appendChild(span);
-
-    // Defensive check: if somehow non-text nodes exist, detect them (shouldn't happen)
     checkAndClaim();
   }
 
-  // Claim function — posts token to /api/claim
   async function claimFlag(challengeName) {
     if (claimed) return;
     claimed = true;
@@ -124,7 +112,6 @@
     }
   }
 
-  // Detect injected <script> nodes and trigger claim (defense-in-depth)
   function checkAndClaim() {
     if (claimed) return;
     const injectedScript = container.querySelector('script');
@@ -138,7 +125,6 @@
     }
   }
 
-  // Read initial ?msg= and populate input & injection
   (function initFromUrl() {
     const params = new URLSearchParams(location.search);
     const msg = params.get('msg') || '';
@@ -150,7 +136,6 @@
     }
   })();
 
-  // When user types, update URL and inject live. Debounce slightly for better UX.
   let debounceTimer = null;
   input.addEventListener('input', (e) => {
     const val = e.target.value;
@@ -159,7 +144,6 @@
     debounceTimer = setTimeout(()=> injectMessage(val), 120);
   });
 
-  // Apply button does the same (handy if pasting payloads)
   applyBtn.addEventListener('click', ()=> {
     const val = input.value;
     updateUrlMsg(val);
@@ -167,7 +151,6 @@
     input.focus();
   });
 
-  // Also submit on Enter
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
