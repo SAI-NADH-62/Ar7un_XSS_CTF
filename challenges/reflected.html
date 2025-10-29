@@ -60,23 +60,73 @@
       history.replaceState(null, '', newUrl);
     }
 
-    // Secure message renderer (no innerHTML)
+    // Vulnerable injection function (intentionally unsafe)
     function injectMessage(value) {
-      container.textContent = '';
-      const label = document.createElement('span');
-      label.textContent = 'Message: ';
-      container.appendChild(label);
+      // Note: vulnerable on purpose — we set innerHTML directly
+      container.innerHTML = 'Message: ' + value;
+      // After injection, check for injected script nodes / attributes
+      checkAndClaim();
+    }
 
-      if (!value) {
-        const em = document.createElement('em');
-        em.textContent = 'nothing yet';
-        container.appendChild(em);
-      } else {
-        const span = document.createElement('span');
-        span.className = 'user-msg';
-        span.textContent = value; // textContent ensures safe rendering
-        container.appendChild(span);
+    // Claim function — posts token to /api/claim
+    async function claimFlag(challengeName) {
+      if (window._ctf_claimed) return;
+      window._ctf_claimed = true;
+      try {
+        const resp = await fetch('/api/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: window.ctf_token || null, challenge: challengeName })
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(()=>({ error: 'unknown' }));
+          alert('Claim failed: ' + (err.error || resp.status));
+          return;
+        }
+        const json = await resp.json();
+        alert('FLAG: ' + json.flag);
+      } catch (e) {
+        alert('Error contacting /api/claim: ' + e.message);
       }
+    }
+
+    // Detect injected <script> nodes and trigger claim (wait briefly to let injected code run)
+    function checkAndClaim() {
+      if (window._ctf_claimed) return;
+
+      // 1) SCRIPTS: require script to have substantive content or a src attribute.
+      const scripts = container.querySelectorAll('script');
+      for (let s of scripts) {
+        const hasSrc = !!(s.src && s.src.trim().length > 0);
+        const hasContent = !!(s.textContent && s.textContent.trim().length > 0);
+        if (hasSrc || hasContent) {
+          // found a real script with code or external src — consider this a valid injection
+          setTimeout(()=> claimFlag('REFLECTED'), 200);
+          return;
+        }
+      }
+
+      // 2) Event-handler attributes: only count if attribute value is non-empty
+      const handlerSelector = '[onerror], [onload], [onclick], [onmouseover], [onfocus], [onmouseenter]';
+      const withHandler = container.querySelectorAll(handlerSelector);
+      for (let el of withHandler) {
+        // check each possible attribute for meaningfully non-empty value
+        const attrs = ['onerror','onload','onclick','onmouseover','onfocus','onmouseenter'];
+        for (let a of attrs) {
+          if (el.hasAttribute(a)) {
+            const val = el.getAttribute(a);
+            if (val && val.trim().length > 0) {
+              setTimeout(()=> claimFlag('REFLECTED'), 200);
+              return;
+            }
+          }
+        }
+      }
+
+      // 3) <img src=x onerror=...> like handlers that might execute — already handled above,
+      // but could add additional heuristics here if needed.
+
+      // Otherwise: no substantive injection detected — do not claim.
     }
 
     // Initialize from URL (?msg=)
